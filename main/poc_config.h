@@ -29,3 +29,8 @@
 #define POC_SAMPLE_RATE_HZ   8000
 #define POC_FRAME_SAMPLES    160              // 8000 Hz * 0.020 s
 #define POC_RTP_PAYLOAD_PCMU 0
+
+// V1.1 PDM mic: the ESP32-S3 hardware PDM->PCM filter is speced for ~16-48 kHz,
+// so we capture at 16 kHz and decimate 2:1 down to the 8 kHz G.711 rate.
+#define POC_MIC_CAPTURE_HZ   16000
+#define POC_MIC_DECIMATE     (POC_MIC_CAPTURE_HZ / POC_SAMPLE_RATE_HZ)   // = 2

@@ -17,14 +17,16 @@ a SIP **endpoint with real audio media** on an ESP32-S3 — mic → SIP, SIP →
 
 ## Target hardware
 
-**LilyGO T3-S3 MVSRBoard** (ESP32-S3, 4 MB flash) — silkscreen rev **V1.0**:
-- Mic: **MSM261S4030H0R** I2S MEMS  → I2S1 (BCLK 47, WS 15, DATA 48, EN 35)
-- Amp: **MAX98357A** I2S class-D     → I2S0 (BCLK 40, LRCLK 41, DATA 39, SD 38)
+**LilyGO T3-S3 MVSRBoard** (ESP32-S3, 4 MB flash) — board rev **V1.1**:
+- Mic: **MP34DT05-A** PDM MEMS → **I2S0** PDM-RX (CLK 15, DATA 48, EN 35)
+- Amp: **MAX98357A** I2S class-D → **I2S1** std-TX (BCLK 40, LRCLK 41, DATA 39, SD 38)
 - Vibration motor (PWM, GPIO46) — simulates the doorbell "actuation"
 - PTT = BOOT button (GPIO0)
 
-> ⚠️ If your silkscreen says **V1.1**, the mic is a **PDM** part (MP34DT05) and needs
-> the I2S PDM-RX init instead of standard mode. Adjust `audio_io.c`.
+> ESP32-S3 PDM RX only works on I2S0, so the mic owns I2S0 and the speaker moves to
+> I2S1. The S3 hardware PDM→PCM filter yields 16-bit PCM; we capture at 16 kHz and
+> decimate 2:1 to the 8 kHz G.711 rate. (V1.0 boards have an MSM261 *I2S* mic on
+> BCLK 47/WS 15/DATA 48 needing `i2s_channel_init_std_mode` — see `board_mvsr.h`.)
 
 ## The design (deliberately half-duplex)
 
@@ -75,7 +77,7 @@ garbage, we learn the hard truth cheaply.
 | REGISTER (ext 500, no auth) + INVITE/ACK/BYE via server | ✅ real (parser vendored from pocket-dial) |
 | Push-to-talk half-duplex media loop | ✅ real |
 | **Jitter buffer** | ⚠️ none — direct play-out (fine on a quiet LAN; add later) |
-| **Mic 8 kHz clocking** | ⚠️ verify on bench — if MSM261 needs ≥16 kHz, capture & decimate |
+| Mic capture (PDM → PCM) | ✅ real — PDM2PCM @ 16 kHz, 2:1 decimate to 8 kHz (V1.1 MP34DT05) |
 | **Digest auth (MD5)** | ❌ not needed — pocket-dial is an open registrar |
 | **Acoustic echo cancellation** | ❌ intentionally avoided via PTT |
 | **Incoming calls / full duplex** | ❌ later milestone |

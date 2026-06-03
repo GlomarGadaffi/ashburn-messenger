@@ -1,25 +1,30 @@
 #pragma once
 // ─────────────────────────────────────────────────────────────────────────
-//  LilyGO T3-S3 MVSRBoard  —  pin map  (silkscreen rev V1.0)
-//  Source: official pinout + Xinyuan-LilyGO/T3-S3-MVSRBoard.
+//  LilyGO T3-S3 MVSRBoard  —  pin map  (board rev **V1.1**)
+//  Source: Xinyuan-LilyGO/T3-S3-MVSRBoard  libraries/private_library/pin_config.h
 //
-//  Mic  : MSM261S4030H0R  I2S MEMS  (V1.1 swaps to MP34DT05 PDM — different!)
-//  Amp  : MAX98357A        I2S class-D, 9 dB gain
-//  Two INDEPENDENT I2S buses -> full-duplex capable (we use half-duplex here).
+//  Mic  : MP34DT05-A   PDM MEMS  (V1.1)   <- 2-wire: CLK + DATA, no BCLK/WS
+//  Amp  : MAX98357A    I2S class-D, 9 dB gain
+//
+//  ESP32-S3 constraint: PDM RX is only available on I2S0, so the mic takes
+//  I2S0 and the speaker (standard I2S TX) moves to I2S1. Still two independent
+//  controllers -> full-duplex capable (we run half-duplex / push-to-talk here).
+//
+//  (V1.0 boards instead have an MSM261 *I2S* mic on BCLK 47 / WS 15 / DATA 48;
+//   that needs i2s_channel_init_std_mode — see git history for the V1.0 variant.)
 //
 //  *** This is the DEV board. Keep all board specifics in this one header so
 //      the eventual product board is a single-file swap. ***
 // ─────────────────────────────────────────────────────────────────────────
 
-// ── Microphone (I2S RX) ───────────────────────────────────────────────────
-#define MVSR_MIC_I2S_PORT     I2S_NUM_1
-#define MVSR_MIC_BCLK         GPIO_NUM_47
-#define MVSR_MIC_WS           GPIO_NUM_15
-#define MVSR_MIC_DATA         GPIO_NUM_48   // SD / DOUT of the mic
+// ── Microphone (PDM RX, MP34DT05-A) — must be I2S0 on ESP32-S3 ────────────
+#define MVSR_MIC_I2S_PORT     I2S_NUM_0
+#define MVSR_MIC_PDM_CLK      GPIO_NUM_15   // PDM clock out  (pin_config: LRCLK)
+#define MVSR_MIC_PDM_DIN      GPIO_NUM_48   // PDM data in    (pin_config: DATA)
 #define MVSR_MIC_EN           GPIO_NUM_35   // drive HIGH to power the mic
 
-// ── Speaker (I2S TX -> MAX98357A) ─────────────────────────────────────────
-#define MVSR_SPK_I2S_PORT     I2S_NUM_0
+// ── Speaker (I2S TX -> MAX98357A) — moved to I2S1 (I2S0 taken by PDM mic) ──
+#define MVSR_SPK_I2S_PORT     I2S_NUM_1
 #define MVSR_SPK_BCLK         GPIO_NUM_40
 #define MVSR_SPK_LRCLK        GPIO_NUM_41   // WS
 #define MVSR_SPK_DATA         GPIO_NUM_39
