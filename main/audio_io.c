@@ -62,7 +62,8 @@ esp_err_t audio_init(void)
     gpio_set_direction(MVSR_MIC_EN, GPIO_MODE_OUTPUT);
     gpio_set_direction(MVSR_SPK_SD_MODE, GPIO_MODE_OUTPUT);
     audio_mic_enable(true);
-    audio_amp_enable(true);
+    audio_amp_enable(false);   // amp OFF until a call connects — avoids the
+                               // continuous I2S-underrun click while ringing/idle
 
     init_speaker();
     init_mic();

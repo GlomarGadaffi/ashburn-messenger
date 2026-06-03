@@ -44,10 +44,11 @@ static void motor_buzz(int ms)
     gpio_set_level(MVSR_MOTOR, 0);
 }
 
-// Half-duplex push-to-talk RTP loop. Never returns (reset to end the demo).
-static void media_loop(int rtp_sock, const sockaddr_in &dst)
+// Half-duplex push-to-talk RTP loop. Returns when the peer hangs up (BYE).
+static void media_loop(SipUac &uac, int rtp_sock, const sockaddr_in &dst)
 {
     int16_t pcm[POC_FRAME_SAMPLES];
+    int16_t silence[POC_FRAME_SAMPLES] = {0};
     uint8_t pkt[RTP_HEADER_LEN + POC_FRAME_SAMPLES];
     uint8_t rx[RTP_HEADER_LEN + POC_FRAME_SAMPLES * 2];
 
@@ -57,6 +58,11 @@ static void media_loop(int rtp_sock, const sockaddr_in &dst)
     ESP_LOGI(TAG, "media loop up — hold PTT (BOOT btn) to talk, release to listen");
 
     for (;;) {
+        if (uac.checkHangup()) {                  // peer sent BYE -> end the call
+            ESP_LOGI(TAG, "call ended by peer");
+            return;
+        }
+
         bool ptt = (gpio_get_level(MVSR_PTT_BUTTON) == 0);   // pressed = LOW
 
         if (ptt) {
@@ -78,6 +84,11 @@ static void media_loop(int rtp_sock, const sockaddr_in &dst)
                 if (plen > POC_FRAME_SAMPLES) plen = POC_FRAME_SAMPLES;
                 g711_ulaw_decode_buf(rx + RTP_HEADER_LEN, pcm, plen);
                 audio_write_spk(pcm, plen);
+            } else {
+                // No RTP this frame: feed silence so the I2S DMA doesn't loop the
+                // last received buffer (the "looping audio" symptom). Also paces
+                // the loop ~20 ms and yields to the idle task.
+                audio_write_spk(silence, POC_FRAME_SAMPLES);
             }
             talking_prev = false;
         }
@@ -131,8 +142,13 @@ extern "C" void app_main(void)
     dst.sin_addr.s_addr = inet_addr(remote.ip.c_str());
     dst.sin_port = htons(remote.port);
 
-    motor_buzz(60);              // call answered — short confirm buzz
-    media_loop(rtp_sock, dst);   // never returns
+    motor_buzz(60);                   // call answered — short confirm buzz
+    audio_amp_enable(true);           // power the speaker amp only for the live call
+    media_loop(uac, rtp_sock, dst);   // returns when the peer hangs up (BYE)
+    audio_amp_enable(false);          // amp off -> silent on idle (no underrun click)
 
-    // (unreached in the spike) uac.hangup();
+    close(rtp_sock);
+    motor_buzz(120);                  // call-ended haptic
+    ESP_LOGI(TAG, "call done — idle (reset the board to place another call)");
+    for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
 }

@@ -228,8 +228,11 @@ bool SipUac::placeCall(SipRemoteMedia &out)
     ESP_LOGI(TAG, "INVITE %s via %s:%d", _calleeExt.c_str(), _serverIp.c_str(), _serverPort);
 
     char rbuf[2048];
-    for (int attempt = 0; attempt < 24; ++attempt) {
-        if (attempt % 2 == 0)
+    // Wait up to ~120 s for ext 102 to be answered (200 OK). Retransmit the
+    // INVITE only in the first few seconds (UDP-loss guard); once the server is
+    // ringing 102 we just wait for someone to pick up.
+    for (int attempt = 0; attempt < 240; ++attempt) {
+        if (attempt < 6 && attempt % 2 == 0)
             sendto(_sock, invite.data(), invite.size(), 0, (sockaddr *)&srv, sizeof(srv));
 
         sockaddr_in src{};
@@ -266,6 +269,21 @@ bool SipUac::placeCall(SipRemoteMedia &out)
     }
     ESP_LOGW(TAG, "no final response to INVITE (is %s registered?)", _calleeExt.c_str());
     return false;
+}
+
+bool SipUac::checkHangup()
+{
+    if (_sock < 0) return false;
+    char buf[1500];
+    // Non-blocking peek at the signaling socket.
+    int n = recvfrom(_sock, buf, sizeof(buf) - 1, MSG_DONTWAIT, nullptr, nullptr);
+    if (n <= 0) return false;                 // nothing pending
+    std::string_view sv(buf, (size_t)n);
+    if (sv.rfind("BYE ", 0) == 0) {           // request-line starts with "BYE "
+        ESP_LOGI(TAG, "<- BYE (peer hung up)");
+        return true;
+    }
+    return false;                             // ignore other in-dialog chatter
 }
 
 void SipUac::hangup()

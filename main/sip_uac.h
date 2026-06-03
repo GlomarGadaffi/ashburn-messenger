@@ -24,6 +24,10 @@ public:
     // peer's RTP endpoint and ACK. Call registerExt() first.
     bool placeCall(SipRemoteMedia &out);
 
+    // Non-blocking: returns true if the peer hung up (a BYE arrived on the
+    // signaling socket). Call this from the media loop to end the call cleanly.
+    bool checkHangup();
+
     // Tear the dialog down (BYE through the server).
     void hangup();
 
