@@ -82,8 +82,20 @@ garbage, we learn the hard truth cheaply.
 | **Acoustic echo cancellation** | ❌ intentionally avoided via PTT |
 | **Incoming calls / full duplex** | ❌ later milestone |
 
-## License
+## License & attribution
 
-This spike vendors SIP parser files from pocket-dial (**MIT**). The eventual product's
-license (notably whether to fork the **AGPL** sip_call) is an open decision — deliberately
-deferred until there's something worth shipping.
+**MIT** — see [LICENSE](LICENSE). Dual copyright:
+
+- **Original work** (audio pipeline, G.711, RTP, the `sip_uac` SIP client, Wi-Fi/board
+  integration, application code) — © 2026 GlomarGadaffi.
+- **Vendored SIP message parser** in [`components/sip_core/`](components/sip_core/)
+  (`SipMessage`, `SipSdpMessage`, `SipMessageFactory`, `SipMessageTypes`, `IDGen`) —
+  © 2022 BarGabriel, derived via [pocket-dial](https://github.com/GlomarGadaffi/pocket-dial)
+  from **[BarGabriel/SipServer](https://github.com/BarGabriel/SipServer)** (MIT).
+
+Also referenced (no license obligation, credited anyway):
+- **G.711 µ-law** — the canonical CCITT / Sun reference companding algorithm.
+- **Pin map** — from LilyGO's [T3-S3-MVSRBoard](https://github.com/Xinyuan-LilyGO/T3-S3-MVSRBoard) `pin_config.h`.
+
+Fully permissive: built on MIT code only — **no copyleft dependencies** (notably *not* the
+AGPL `chrta/sip_call`).
